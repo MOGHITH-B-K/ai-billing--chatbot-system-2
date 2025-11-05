@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1761236213695,
+      "tag": "0000_parallel_justice",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1761267044744,
+      "tag": "0001_glamorous_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1761452363179,
+      "tag": "0002_famous_proemial_gods",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1761455453868,
+      "tag": "0003_amused_proudstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1761561957863,
+      "tag": "0004_bent_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1761562512481,
+      "tag": "0005_legal_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1761980468084,
+      "tag": "0006_nice_black_tarantula",
+      "breakpoints": true
+    }
+  ]
+}
