@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { db } from "@/lib/database";
 import { PlanBadge } from "@/components/plan-badge";
 import { toast } from "sonner";
 
@@ -99,25 +100,38 @@ export function AppSidebar() {
     }
   }, [router]);
 
-  const calculateStorage = React.useCallback(async () => {
+  const calculateStorage = React.useCallback(() => {
     try {
-      const token = localStorage.getItem("bearer_token");
-      const response = await fetch("/api/storage/stats", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      const salesBills = db.getSalesBills();
+      const rentalBills = db.getRentalBills();
+      const customers = db.getCustomers();
+      const products = db.getProducts();
+      const bookings = db.getBookings();
       
-      if (response.ok) {
-        const data = await response.json();
-        setStorageStats({
-          usedMB: data.usedMB || 0,
-          usedPercent: data.usedPercent || 0,
-          remainingMB: data.remainingMB || MAX_STORAGE_MB,
-          totalRecords: data.totalRecords || 0,
-          estimatedCapacity: data.estimatedCapacity || 0,
-        });
-      }
+      const allData = {
+        salesBills,
+        rentalBills,
+        customers,
+        products,
+        bookings,
+      };
+      
+      const totalSize = new Blob([JSON.stringify(allData)]).size;
+      const usedMB = totalSize / (1024 * 1024);
+      const remainingMB = MAX_STORAGE_MB - usedMB;
+      const usedPercent = (usedMB / MAX_STORAGE_MB) * 100;
+      
+      const totalRecords = salesBills.length + rentalBills.length;
+      const avgRecordSize = totalRecords > 0 ? totalSize / totalRecords : 5000;
+      const estimatedCapacity = Math.floor(remainingMB * 1024 * 1024 / avgRecordSize);
+      
+      setStorageStats({
+        usedMB: parseFloat(usedMB.toFixed(2)),
+        usedPercent: parseFloat(usedPercent.toFixed(2)),
+        remainingMB: parseFloat(remainingMB.toFixed(2)),
+        totalRecords,
+        estimatedCapacity,
+      });
     } catch (error) {
       console.error("Error calculating storage:", error);
     }
@@ -125,7 +139,7 @@ export function AppSidebar() {
 
   React.useEffect(() => {
     calculateStorage();
-    // Update every 10 seconds for better performance
+    // Update every 10 seconds instead of 5 for better performance
     const interval = setInterval(calculateStorage, 10000);
     return () => clearInterval(interval);
   }, [calculateStorage]);

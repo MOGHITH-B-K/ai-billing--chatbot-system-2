@@ -7,20 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Store, Loader2, Sparkles, ShieldCheck } from "lucide-react";
-import Image from "next/image";
+
+export const dynamic = 'force-dynamic';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [shopLogo, setShopLogo] = useState<string | null>(null);
-  const [shopName, setShopName] = useState("SREE SAI DURGA");
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
 
-  // Initialize default credentials and fetch shop settings on mount
+  // Initialize default credentials on mount
   useEffect(() => {
     const savedAdmins = localStorage.getItem("shop_admins");
     const savedPasswords = localStorage.getItem("shop_admin_passwords");
@@ -34,25 +33,7 @@ function LoginForm() {
       const defaultPasswords = { "MOGHITH": "289236173476" };
       localStorage.setItem("shop_admin_passwords", JSON.stringify(defaultPasswords));
     }
-
-    // Fetch shop settings for logo
-    fetchShopSettings();
   }, []);
-
-  const fetchShopSettings = async () => {
-    try {
-      const response = await fetch('/api/settings');
-      if (response.ok) {
-        const data = await response.json();
-        if (data) {
-          setShopLogo(data.logoUrl || null);
-          setShopName(data.shopName || "SREE SAI DURGA");
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching shop settings:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,25 +92,13 @@ function LoginForm() {
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur-xl opacity-50 animate-pulse"></div>
-              {shopLogo ? (
-                <div className="relative bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-lg">
-                  <Image
-                    src={shopLogo}
-                    alt="Shop Logo"
-                    width={80}
-                    height={80}
-                    className="rounded-xl object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white p-5 rounded-2xl shadow-lg">
-                  <Store className="h-10 w-10" />
-                </div>
-              )}
+              <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white p-5 rounded-2xl shadow-lg">
+                <Store className="h-10 w-10" />
+              </div>
             </div>
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {shopName}
+                SREE SAI DURGA
               </h1>
               <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
                 <Sparkles className="h-4 w-4 text-purple-500" />

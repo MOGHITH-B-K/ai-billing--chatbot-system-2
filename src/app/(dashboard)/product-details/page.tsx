@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Package, Search, Loader2, TrendingUp, AlertTriangle, Download, PackagePlus, History, Bell, X, Upload, Minus } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Search, Loader2, TrendingUp, AlertTriangle, Download, PackagePlus, History, Bell, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -85,7 +85,6 @@ export default function ProductDetailsPage() {
     stockQuantity: 0,
     minStockLevel: 5,
   });
-  const [stockAdjustment, setStockAdjustment] = useState(0);
   const [restockData, setRestockData] = useState({
     quantityToAdd: 0,
     notes: "",
@@ -310,61 +309,10 @@ export default function ProductDetailsPage() {
     }
   }, [formData, loadData]);
 
-  const openEdit = (product: Product) => {
-    setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      rate: product.rate,
-      category: product.category || "",
-      productType: product.productType,
-      stockQuantity: product.stockQuantity,
-      minStockLevel: product.minStockLevel,
-    });
-    setStockAdjustment(0);
-    setIsEditOpen(true);
-  };
-
-  const openRestock = (product: Product) => {
-    setRestockingProduct(product);
-    setRestockData({ quantityToAdd: 0, notes: "" });
-    setIsRestockOpen(true);
-  };
-
-  const openHistory = (product?: Product) => {
-    loadStockHistory(product?.id);
-    setIsHistoryOpen(true);
-  };
-
-  const exportProducts = async () => {
-    try {
-      const response = await fetch('/api/products/export');
-      if (response.ok) {
-        const data = await response.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `products-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("Products exported successfully");
-      } else {
-        throw new Error('Failed to export');
-      }
-    } catch (error) {
-      console.error('Error exporting:', error);
-      toast.error('Failed to export products');
-    }
-  };
-
   const handleEdit = useCallback(async () => {
     if (!editingProduct) return;
 
     try {
-      const newStockQuantity = Math.max(0, formData.stockQuantity + stockAdjustment);
-      
       const response = await fetch(`/api/products?id=${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -373,7 +321,7 @@ export default function ProductDetailsPage() {
           rate: formData.rate,
           category: formData.category || undefined,
           productType: formData.productType,
-          stockQuantity: newStockQuantity,
+          stockQuantity: formData.stockQuantity,
           minStockLevel: formData.minStockLevel,
         })
       });
@@ -383,7 +331,6 @@ export default function ProductDetailsPage() {
         setIsEditOpen(false);
         setEditingProduct(null);
         setFormData({ name: "", rate: 0, category: "", productType: "sales", stockQuantity: 0, minStockLevel: 5 });
-        setStockAdjustment(0);
         
         // Invalidate caches
         dataCache.clear('products');
@@ -395,7 +342,7 @@ export default function ProductDetailsPage() {
       console.error('Error updating product:', error);
       toast.error('Failed to update product');
     }
-  }, [editingProduct, formData, stockAdjustment, loadData]);
+  }, [editingProduct, formData, loadData]);
 
   const handleRestock = useCallback(async () => {
     if (!restockingProduct || restockData.quantityToAdd <= 0) {
@@ -456,6 +403,54 @@ export default function ProductDetailsPage() {
       toast.error('Failed to delete product');
     }
   }, [loadData]);
+
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      rate: product.rate,
+      category: product.category || "",
+      productType: product.productType,
+      stockQuantity: product.stockQuantity,
+      minStockLevel: product.minStockLevel,
+    });
+    setIsEditOpen(true);
+  };
+
+  const openRestock = (product: Product) => {
+    setRestockingProduct(product);
+    setRestockData({ quantityToAdd: 0, notes: "" });
+    setIsRestockOpen(true);
+  };
+
+  const openHistory = (product?: Product) => {
+    loadStockHistory(product?.id);
+    setIsHistoryOpen(true);
+  };
+
+  const exportProducts = async () => {
+    try {
+      const response = await fetch('/api/products/export');
+      if (response.ok) {
+        const data = await response.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `products-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Products exported successfully");
+      } else {
+        throw new Error('Failed to export');
+      }
+    } catch (error) {
+      console.error('Error exporting:', error);
+      toast.error('Failed to export products');
+    }
+  };
 
   const getStockStatus = useCallback((product: Product) => {
     if (product.stockQuantity === 0) return { label: "Out of Stock", color: "destructive" };
@@ -1045,86 +1040,13 @@ export default function ProductDetailsPage() {
             </div>
             <div>
               <Label>Stock Quantity</Label>
-              <div className="space-y-3">
-                <div className="bg-muted p-4 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Current Stock:</span>
-                    <span className="text-2xl font-bold">{formData.stockQuantity}</span>
-                  </div>
-                  {stockAdjustment !== 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Adjustment:</span>
-                      <span className={`font-semibold ${stockAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {stockAdjustment > 0 ? '+' : ''}{stockAdjustment}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                    <span className="text-sm font-medium">New Stock:</span>
-                    <span className="text-xl font-bold text-primary">
-                      {Math.max(0, formData.stockQuantity + stockAdjustment)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setStockAdjustment(prev => prev - 10)}
-                    className="h-10 w-10"
-                  >
-                    <span className="text-lg font-bold">-10</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setStockAdjustment(prev => prev - 1)}
-                    className="h-10 w-10"
-                  >
-                    <Minus className="h-5 w-5" />
-                  </Button>
-                  <Input
-                    type="number"
-                    value={stockAdjustment}
-                    onChange={(e) => setStockAdjustment(parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                    className="text-center font-semibold"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setStockAdjustment(prev => prev + 1)}
-                    className="h-10 w-10"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setStockAdjustment(prev => prev + 10)}
-                    className="h-10 w-10"
-                  >
-                    <span className="text-lg font-bold">+10</span>
-                  </Button>
-                </div>
-                
-                {stockAdjustment !== 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStockAdjustment(0)}
-                    className="w-full"
-                  >
-                    Reset Adjustment
-                  </Button>
-                )}
-              </div>
+              <Input
+                type="number"
+                min="0"
+                value={formData.stockQuantity}
+                onChange={(e) => setFormData({ ...formData, stockQuantity: parseInt(e.target.value) || 0 })}
+                placeholder="Enter stock quantity"
+              />
             </div>
             <div>
               <Label>Minimum Stock Level</Label>

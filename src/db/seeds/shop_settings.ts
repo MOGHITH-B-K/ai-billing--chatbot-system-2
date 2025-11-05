@@ -2,12 +2,12 @@ import { db } from '@/db';
 import { shopSettings } from '@/db/schema';
 
 async function main() {
-    const sampleShopSettings = [
+    const sampleSettings = [
         {
             shopName: 'SREE SAI DURGA',
-            shopAddress: 'MAIN ROAD, THIRUVENNAI NALLUR Kt, VILLUPURAM Dt, PINCODE: 607203',
-            phoneNumber1: '9790548669',
-            phoneNumber2: '9442378669',
+            shopAddress: '123 Main Street, Hyderabad, Telangana, India',
+            phoneNumber1: '9876543210',
+            phoneNumber2: '8765432109',
             logoUrl: null,
             paymentQrUrl: null,
             language: 'english',
@@ -17,7 +17,7 @@ async function main() {
         }
     ];
 
-    await db.insert(shopSettings).values(sampleShopSettings);
+    await db.insert(shopSettings).values(sampleSettings);
     
     console.log('✅ Shop settings seeder completed successfully');
 }

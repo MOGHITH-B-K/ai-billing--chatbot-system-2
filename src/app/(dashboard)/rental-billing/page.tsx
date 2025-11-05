@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Trash2, Save, Printer, Search, Share2, Clock, Percent, Loader2 } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Save, Printer, Search, Share2, Clock, Percent } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ interface ShopSettings {
   paymentQrUrl?: string;
 }
 
-function RentalBillingContent() {
+export default function RentalBillingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1012,20 +1012,5 @@ Thank you for your business! 🙏`;
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-export default function RentalBillingPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <div className="text-lg font-medium">Loading rental billing...</div>
-        </div>
-      </div>
-    }>
-      <RentalBillingContent />
-    </Suspense>
   );
 }

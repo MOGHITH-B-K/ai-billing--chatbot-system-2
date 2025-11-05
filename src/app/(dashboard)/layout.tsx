@@ -2,8 +2,6 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PlanBadge } from "@/components/plan-badge";
 
-export const dynamic = 'force-dynamic';
-
 export default function DashboardLayout({
   children,
 }: {

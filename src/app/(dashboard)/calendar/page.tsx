@@ -9,28 +9,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { db, type CalendarBooking, type Customer } from "@/lib/database";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, CalendarPlus, Search, Clock } from "lucide-react";
-
-interface CalendarBooking {
-  id: number;
-  bookingDate: string;
-  billType: string;
-  customerName: string;
-  customerPhone: string;
-  notes: string | null;
-  createdAt: string;
-}
-
-interface Customer {
-  id: number;
-  name: string;
-  phone: string;
-  address: string | null;
-}
 
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -40,7 +24,6 @@ export default function CalendarPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     billType: "sales" as "sales" | "rental",
     customerName: "",
@@ -55,48 +38,17 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (searchQuery.length > 0) {
-      searchCustomers();
+      const results = db.searchCustomers(searchQuery);
+      setSearchResults(results);
+      setShowSearchResults(true);
     } else {
       setSearchResults([]);
       setShowSearchResults(false);
     }
   }, [searchQuery]);
 
-  const loadBookings = async () => {
-    try {
-      const token = localStorage.getItem("bearer_token");
-      const response = await fetch("/api/bookings", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBookings(data.bookings || []);
-      }
-    } catch (error) {
-      console.error("Error loading bookings:", error);
-    }
-  };
-
-  const searchCustomers = async () => {
-    try {
-      const token = localStorage.getItem("bearer_token");
-      const response = await fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.customers || []);
-        setShowSearchResults(true);
-      }
-    } catch (error) {
-      console.error("Error searching customers:", error);
-    }
+  const loadBookings = () => {
+    setBookings(db.getBookings());
   };
 
   const handleCustomerSelect = (customer: Customer) => {
@@ -104,13 +56,13 @@ export default function CalendarPage() {
       ...formData,
       customerName: customer.name,
       customerPhone: customer.phone,
-      customerAddress: customer.address || "",
+      customerAddress: customer.address,
     });
     setSearchQuery(customer.name);
     setShowSearchResults(false);
   };
 
-  const handleBooking = async () => {
+  const handleBooking = () => {
     if (!selectedDate) {
       toast.error("Please select a date");
       return;
@@ -121,83 +73,44 @@ export default function CalendarPage() {
       return;
     }
 
-    setIsLoading(true);
+    // Combine date and time
+    const [hours, minutes] = selectedTime.split(":");
+    const bookingDateTime = new Date(selectedDate);
+    bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-    try {
-      // Combine date and time
-      const [hours, minutes] = selectedTime.split(":");
-      const bookingDateTime = new Date(selectedDate);
-      bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    db.saveBooking({
+      date: bookingDateTime.toISOString(),
+      billType: formData.billType,
+      customerName: formData.customerName,
+      customerPhone: formData.customerPhone,
+      notes: formData.notes,
+    });
 
-      const token = localStorage.getItem("bearer_token");
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          bookingDate: bookingDateTime.toISOString(),
-          billType: formData.billType,
-          customerName: formData.customerName,
-          customerPhone: formData.customerPhone,
-          notes: formData.notes || null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create booking");
-      }
-
-      toast.success("Booking created successfully");
-      setFormData({
-        billType: "sales",
-        customerName: "",
-        customerPhone: "",
-        customerAddress: "",
-        notes: "",
-      });
-      setSearchQuery("");
-      setSelectedTime("09:00");
-      setIsDialogOpen(false);
-      loadBookings();
-    } catch (error) {
-      console.error("Error creating booking:", error);
-      toast.error("Failed to create booking");
-    } finally {
-      setIsLoading(false);
-    }
+    toast.success("Booking created successfully");
+    setFormData({
+      billType: "sales",
+      customerName: "",
+      customerPhone: "",
+      customerAddress: "",
+      notes: "",
+    });
+    setSearchQuery("");
+    setSelectedTime("09:00");
+    setIsDialogOpen(false);
+    loadBookings();
   };
 
-  const handleDeleteBooking = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this booking?")) return;
-
-    try {
-      const token = localStorage.getItem("bearer_token");
-      const response = await fetch(`/api/bookings`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ id }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete booking");
-      }
-
+  const handleDeleteBooking = (id: string) => {
+    if (confirm("Are you sure you want to delete this booking?")) {
+      db.deleteBooking(id);
       toast.success("Booking deleted");
       loadBookings();
-    } catch (error) {
-      console.error("Error deleting booking:", error);
-      toast.error("Failed to delete booking");
     }
   };
 
   const getBookingsForDate = (date: Date) => {
     return bookings.filter(booking => {
-      const bookingDate = new Date(booking.bookingDate);
+      const bookingDate = new Date(booking.date);
       return bookingDate.toDateString() === date.toDateString();
     });
   };
@@ -205,7 +118,7 @@ export default function CalendarPage() {
   const selectedDateBookings = selectedDate ? getBookingsForDate(selectedDate) : [];
 
   const modifiers = {
-    booked: bookings.map(b => new Date(b.bookingDate)),
+    booked: bookings.map(b => new Date(b.date)),
   };
 
   const modifiersStyles = {
@@ -266,7 +179,7 @@ export default function CalendarPage() {
             ) : (
               <div className="space-y-3">
                 {selectedDateBookings
-                  .sort((a, b) => new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime())
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                   .map((booking) => (
                   <div
                     key={booking.id}
@@ -280,7 +193,7 @@ export default function CalendarPage() {
                           </Badge>
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Clock className="h-3 w-3" />
-                            {format(new Date(booking.bookingDate), "h:mm a")}
+                            {format(new Date(booking.date), "h:mm a")}
                           </div>
                         </div>
                         <div className="font-semibold text-lg">{booking.customerName}</div>
@@ -320,7 +233,7 @@ export default function CalendarPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {bookings
-                .sort((a, b) => new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime())
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                 .map((booking) => (
                   <div
                     key={booking.id}
@@ -338,10 +251,10 @@ export default function CalendarPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="font-semibold">{format(new Date(booking.bookingDate), "PPP")}</div>
+                    <div className="font-semibold">{format(new Date(booking.date), "PPP")}</div>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      {format(new Date(booking.bookingDate), "h:mm a")}
+                      {format(new Date(booking.date), "h:mm a")}
                     </div>
                     <div className="text-sm font-medium">{booking.customerName}</div>
                     <div className="text-sm text-muted-foreground">{booking.customerPhone}</div>
@@ -463,8 +376,8 @@ export default function CalendarPage() {
               />
             </div>
 
-            <Button onClick={handleBooking} className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Booking"}
+            <Button onClick={handleBooking} className="w-full">
+              Create Booking
             </Button>
           </div>
         </DialogContent>

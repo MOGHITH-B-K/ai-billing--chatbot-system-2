@@ -2,52 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { db } from "@/lib/database";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, subMonths } from "date-fns";
 import { BarChart3, TrendingUp, DollarSign, ShoppingCart } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
-
-interface Bill {
-  id: number;
-  serialNo: number;
-  customerName: string;
-  customerPhone: string;
-  totalAmount: number;
-  advanceAmount: number;
-  isPaid: boolean;
-  createdAt: string;
-  billDate?: string;
-  fromDate?: string;
-}
+import { useMemo } from "react";
 
 export default function OverallSalesPage() {
-  const [salesBills, setSalesBills] = useState<Bill[]>([]);
-  const [rentalBills, setRentalBills] = useState<Bill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const token = localStorage.getItem("bearer_token");
-      const [salesRes, rentalRes] = await Promise.all([
-        fetch("/api/sales-bills", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("/api/rental-bills", { headers: { "Authorization": `Bearer ${token}` } })
-      ]);
-
-      if (salesRes.ok && rentalRes.ok) {
-        const salesData = await salesRes.json();
-        const rentalData = await rentalRes.json();
-        setSalesBills(salesData.bills || []);
-        setRentalBills(rentalData.bills || []);
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const salesBills = db.getSalesBills();
+  const rentalBills = db.getRentalBills();
 
   const salesStats = useMemo(() => {
     const total = salesBills.reduce((sum, bill) => sum + (bill.totalAmount + bill.advanceAmount), 0);
@@ -76,14 +38,14 @@ export default function OverallSalesPage() {
 
       const salesTotal = salesBills
         .filter(bill => {
-          const billDate = new Date(bill.billDate || bill.createdAt);
+          const billDate = new Date(bill.date);
           return billDate >= monthStart && billDate <= monthEnd;
         })
         .reduce((sum, bill) => sum + (bill.totalAmount + bill.advanceAmount), 0);
 
       const rentalTotal = rentalBills
         .filter(bill => {
-          const billDate = new Date(bill.fromDate || bill.createdAt);
+          const billDate = new Date(bill.fromDate);
           return billDate >= monthStart && billDate <= monthEnd;
         })
         .reduce((sum, bill) => sum + (bill.totalAmount + bill.advanceAmount), 0);
@@ -117,17 +79,6 @@ export default function OverallSalesPage() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
   }, [salesBills, rentalBills]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading sales data...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
