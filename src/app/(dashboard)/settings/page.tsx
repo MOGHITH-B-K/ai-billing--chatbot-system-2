@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Globe, UserPlus, Palette, Upload, Store, CreditCard, Save, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,6 +24,13 @@ export default function SettingsPage() {
   const [admins, setAdmins] = useState<Array<{ id: string; username: string }>>([]);
   const [addAdminDialog, setAddAdminDialog] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ username: "", password: "", confirmPassword: "" });
+  
+  // Delete confirmation dialog
+  const [deleteAdminDialog, setDeleteAdminDialog] = useState<{ id: string; username: string } | null>(null);
+  
+  // Change password dialog
+  const [changePasswordDialog, setChangePasswordDialog] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
 
   // Shop Profile
   const [shopProfile, setShopProfile] = useState({
@@ -124,35 +132,51 @@ export default function SettingsPage() {
       toast.error("Cannot delete main admin");
       return;
     }
+    setDeleteAdminDialog({ id, username });
+  };
 
-    if (confirm(`Are you sure you want to delete admin "${username}"?`)) {
-      const updatedAdmins = admins.filter(admin => admin.id !== id);
-      setAdmins(updatedAdmins);
-      localStorage.setItem("shop_admins", JSON.stringify(updatedAdmins));
+  const confirmDeleteAdmin = () => {
+    if (!deleteAdminDialog) return;
+    
+    const { id, username } = deleteAdminDialog;
+    const updatedAdmins = admins.filter(admin => admin.id !== id);
+    setAdmins(updatedAdmins);
+    localStorage.setItem("shop_admins", JSON.stringify(updatedAdmins));
 
-      // Remove password
-      const passwords = JSON.parse(localStorage.getItem("shop_admin_passwords") || "{}");
-      delete passwords[username];
-      localStorage.setItem("shop_admin_passwords", JSON.stringify(passwords));
+    // Remove password
+    const passwords = JSON.parse(localStorage.getItem("shop_admin_passwords") || "{}");
+    delete passwords[username];
+    localStorage.setItem("shop_admin_passwords", JSON.stringify(passwords));
 
-      toast.success("Admin deleted successfully");
-    }
+    toast.success("Admin deleted successfully");
+    setDeleteAdminDialog(null);
   };
 
   const handleChangePassword = (username: string) => {
-    const newPassword = prompt(`Enter new password for ${username}:`);
-    if (!newPassword) return;
+    setChangePasswordDialog(username);
+    setPasswordForm({ newPassword: "", confirmPassword: "" });
+  };
 
-    const confirmPassword = prompt("Confirm new password:");
-    if (newPassword !== confirmPassword) {
+  const confirmChangePassword = () => {
+    if (!changePasswordDialog) return;
+    
+    if (!passwordForm.newPassword) {
+      toast.error("Please enter a new password");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error("Passwords do not match!");
       return;
     }
 
     const passwords = JSON.parse(localStorage.getItem("shop_admin_passwords") || "{}");
-    passwords[username] = newPassword;
+    passwords[changePasswordDialog] = passwordForm.newPassword;
     localStorage.setItem("shop_admin_passwords", JSON.stringify(passwords));
-    toast.success(`Password updated for ${username}`);
+    toast.success(`Password updated for ${changePasswordDialog}`);
+    
+    setChangePasswordDialog(null);
+    setPasswordForm({ newPassword: "", confirmPassword: "" });
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -565,6 +589,62 @@ export default function SettingsPage() {
             </Button>
             <Button onClick={handleAddAdmin}>
               Add Admin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Admin Confirmation Dialog */}
+      <AlertDialog open={!!deleteAdminDialog} onOpenChange={() => setDeleteAdminDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete admin "{deleteAdminDialog?.username}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteAdmin}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={!!changePasswordDialog} onOpenChange={() => setChangePasswordDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password for {changePasswordDialog}</DialogTitle>
+            <DialogDescription>
+              Enter and confirm the new password for this admin account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>New Password *</Label>
+              <Input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                placeholder="Enter new password"
+              />
+            </div>
+            <div>
+              <Label>Confirm New Password *</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChangePasswordDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmChangePassword}>
+              Update Password
             </Button>
           </DialogFooter>
         </DialogContent>
