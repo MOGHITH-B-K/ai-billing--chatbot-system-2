@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json();
-    const { productId, quantityToAdd, notes } = body;
+    const { productId, quantityChange, changeType, notes } = body;
 
     // Validate required fields
     if (!productId) {
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!quantityToAdd) {
+    if (quantityChange === undefined || quantityChange === null) {
       return NextResponse.json(
-        { error: 'Quantity to add is required', code: 'MISSING_QUANTITY' },
+        { error: 'Quantity change is required', code: 'MISSING_QUANTITY' },
         { status: 400 }
       );
     }
@@ -33,11 +33,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate quantityToAdd is a positive integer
-    const parsedQuantity = parseInt(quantityToAdd);
-    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+    // Validate quantityChange is a valid number (can be positive or negative)
+    const parsedQuantity = parseInt(quantityChange);
+    if (isNaN(parsedQuantity)) {
       return NextResponse.json(
-        { error: 'Quantity to add must be a positive integer', code: 'INVALID_QUANTITY' },
+        { error: 'Quantity change must be a valid number', code: 'INVALID_QUANTITY' },
         { status: 400 }
       );
     }
@@ -59,6 +59,18 @@ export async function POST(request: NextRequest) {
     const currentProduct = existingProduct[0];
     const previousQuantity = currentProduct.stockQuantity;
     const newQuantity = previousQuantity + parsedQuantity;
+
+    // Prevent negative stock
+    if (newQuantity < 0) {
+      return NextResponse.json(
+        { 
+          error: `Cannot decrease stock below 0. Current stock: ${previousQuantity}, Requested change: ${parsedQuantity}`,
+          code: 'INSUFFICIENT_STOCK'
+        },
+        { status: 400 }
+      );
+    }
+
     const currentTimestamp = new Date().toISOString();
 
     // Update products table
@@ -66,7 +78,7 @@ export async function POST(request: NextRequest) {
       .update(products)
       .set({
         stockQuantity: newQuantity,
-        lastRestocked: currentTimestamp,
+        lastRestocked: parsedQuantity > 0 ? currentTimestamp : currentProduct.lastRestocked,
         updatedAt: currentTimestamp,
       })
       .where(eq(products.id, parsedProductId))
@@ -79,10 +91,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine change type
+    const finalChangeType = changeType || (parsedQuantity > 0 ? 'restock' : 'adjustment');
+
     // Insert into stockHistory table
     await db.insert(stockHistory).values({
       productId: parsedProductId,
-      changeType: 'restock',
+      changeType: finalChangeType,
       quantityChange: parsedQuantity,
       previousQuantity: previousQuantity,
       newQuantity: newQuantity,
@@ -90,7 +105,15 @@ export async function POST(request: NextRequest) {
       createdAt: currentTimestamp,
     });
 
-    return NextResponse.json(updatedProduct[0], { status: 200 });
+    return NextResponse.json({
+      ...updatedProduct[0],
+      changeApplied: {
+        previousQuantity,
+        change: parsedQuantity,
+        newQuantity,
+        changeType: finalChangeType
+      }
+    }, { status: 200 });
   } catch (error) {
     console.error('POST restock error:', error);
     return NextResponse.json(

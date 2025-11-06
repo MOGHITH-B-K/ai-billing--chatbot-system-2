@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Package, Search, Loader2, TrendingUp, AlertTriangle, Download, PackagePlus, History, Bell, X, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Search, Loader2, TrendingUp, AlertTriangle, Download, PackagePlus, History, Bell, X, Upload, Minus, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -85,8 +85,10 @@ export default function ProductDetailsPage() {
     stockQuantity: 0,
     minStockLevel: 5,
   });
+  const [stockChangeMode, setStockChangeMode] = useState<'increase' | 'decrease'>('increase');
   const [restockData, setRestockData] = useState({
-    quantityToAdd: 0,
+    quantityChange: 0,
+    changeType: "",
     notes: "",
   });
 
@@ -345,8 +347,17 @@ export default function ProductDetailsPage() {
   }, [editingProduct, formData, loadData]);
 
   const handleRestock = useCallback(async () => {
-    if (!restockingProduct || restockData.quantityToAdd <= 0) {
+    if (!restockingProduct || restockData.quantityChange === 0) {
       toast.error("Please enter a valid quantity");
+      return;
+    }
+
+    const finalQuantityChange = stockChangeMode === 'decrease' 
+      ? -Math.abs(restockData.quantityChange) 
+      : Math.abs(restockData.quantityChange);
+
+    if (stockChangeMode === 'decrease' && restockingProduct.stockQuantity + finalQuantityChange < 0) {
+      toast.error(`Cannot decrease stock below 0. Current stock: ${restockingProduct.stockQuantity}`);
       return;
     }
 
@@ -356,28 +367,32 @@ export default function ProductDetailsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: restockingProduct.id,
-          quantityToAdd: restockData.quantityToAdd,
+          quantityChange: finalQuantityChange,
+          changeType: restockData.changeType || (stockChangeMode === 'increase' ? 'restock' : 'adjustment'),
           notes: restockData.notes,
         })
       });
 
       if (response.ok) {
-        toast.success("Stock updated successfully");
+        const result = await response.json();
+        toast.success(`Stock ${stockChangeMode === 'increase' ? 'increased' : 'decreased'} successfully`);
         setIsRestockOpen(false);
         setRestockingProduct(null);
-        setRestockData({ quantityToAdd: 0, notes: "" });
+        setRestockData({ quantityChange: 0, changeType: "", notes: "" });
+        setStockChangeMode('increase');
         
         // Invalidate caches
         dataCache.clear('products');
         await loadData();
       } else {
-        throw new Error('Failed to restock');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update stock');
       }
     } catch (error) {
-      console.error('Error restocking:', error);
-      toast.error('Failed to update stock');
+      console.error('Error updating stock:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update stock');
     }
-  }, [restockingProduct, restockData, loadData]);
+  }, [restockingProduct, restockData, stockChangeMode, loadData]);
 
   const handleDelete = useCallback(async (id: number) => {
     if (!confirm("Are you sure you want to delete this product?")) {
@@ -419,7 +434,8 @@ export default function ProductDetailsPage() {
 
   const openRestock = (product: Product) => {
     setRestockingProduct(product);
-    setRestockData({ quantityToAdd: 0, notes: "" });
+    setRestockData({ quantityChange: 0, changeType: "", notes: "" });
+    setStockChangeMode('increase');
     setIsRestockOpen(true);
   };
 
@@ -1067,46 +1083,144 @@ export default function ProductDetailsPage() {
 
       {/* Restock Dialog */}
       <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Restock Product</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUpDown className="h-5 w-5" />
+              Adjust Stock Level
+            </DialogTitle>
           </DialogHeader>
           {restockingProduct && (
             <div className="space-y-4 mt-4">
               <div className="bg-muted p-4 rounded-lg">
-                <p className="font-semibold">{restockingProduct.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Current Stock: <span className="font-semibold">{restockingProduct.stockQuantity}</span>
+                <p className="font-semibold text-lg">{restockingProduct.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Current Stock: <span className="font-bold text-lg">{restockingProduct.stockQuantity}</span>
                 </p>
+                {restockingProduct.stockQuantity < restockingProduct.minStockLevel && (
+                  <Badge variant="destructive" className="mt-2">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Below minimum level ({restockingProduct.minStockLevel})
+                  </Badge>
+                )}
               </div>
+
+              {/* Stock Change Mode Selector */}
               <div>
-                <Label>Quantity to Add *</Label>
+                <Label className="mb-2 block">Operation Type</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={stockChangeMode === 'increase' ? 'default' : 'outline'}
+                    onClick={() => setStockChangeMode('increase')}
+                    className={stockChangeMode === 'increase' ? 'bg-green-600 hover:bg-green-700' : ''}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Increase Stock
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={stockChangeMode === 'decrease' ? 'default' : 'outline'}
+                    onClick={() => setStockChangeMode('decrease')}
+                    className={stockChangeMode === 'decrease' ? 'bg-red-600 hover:bg-red-700' : ''}
+                  >
+                    <Minus className="h-4 w-4 mr-2" />
+                    Decrease Stock
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>Quantity {stockChangeMode === 'increase' ? 'to Add' : 'to Remove'} *</Label>
                 <Input
                   type="number"
                   min="1"
-                  value={restockData.quantityToAdd}
-                  onChange={(e) => setRestockData({ ...restockData, quantityToAdd: parseInt(e.target.value) || 0 })}
-                  placeholder="Enter quantity to add"
+                  value={restockData.quantityChange}
+                  onChange={(e) => setRestockData({ ...restockData, quantityChange: parseInt(e.target.value) || 0 })}
+                  placeholder={`Enter quantity to ${stockChangeMode}`}
+                  className="mt-2"
                 />
+                {stockChangeMode === 'decrease' && restockData.quantityChange > restockingProduct.stockQuantity && (
+                  <p className="text-red-600 text-sm mt-1">
+                    ⚠️ Cannot remove more than current stock ({restockingProduct.stockQuantity})
+                  </p>
+                )}
               </div>
+
+              <div>
+                <Label>Change Type</Label>
+                <select
+                  className="w-full border rounded-md p-2 mt-2"
+                  value={restockData.changeType}
+                  onChange={(e) => setRestockData({ ...restockData, changeType: e.target.value })}
+                >
+                  <option value="">{stockChangeMode === 'increase' ? 'Restock' : 'Adjustment'} (Default)</option>
+                  <option value="restock">Restock (Incoming Supply)</option>
+                  <option value="adjustment">Manual Adjustment</option>
+                  <option value="sale">Sold via Bill</option>
+                  <option value="rental">Rental Transaction</option>
+                  <option value="return">Customer Return</option>
+                  <option value="damage">Damaged/Lost</option>
+                  <option value="inventory">Inventory Check</option>
+                </select>
+              </div>
+
               <div>
                 <Label>Notes (Optional)</Label>
                 <Input
                   value={restockData.notes}
                   onChange={(e) => setRestockData({ ...restockData, notes: e.target.value })}
-                  placeholder="Add notes about this restock"
+                  placeholder={`Add notes about this ${stockChangeMode}`}
+                  className="mt-2"
                 />
               </div>
-              {restockData.quantityToAdd > 0 && (
-                <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
-                  <p className="text-sm font-medium">
-                    New Stock: {restockingProduct.stockQuantity + restockData.quantityToAdd}
+
+              {restockData.quantityChange > 0 && (
+                <div className={`p-3 rounded-lg ${
+                  stockChangeMode === 'increase' 
+                    ? 'bg-green-50 dark:bg-green-950' 
+                    : 'bg-red-50 dark:bg-red-950'
+                }`}>
+                  <p className="text-sm font-medium flex items-center justify-between">
+                    <span>New Stock Level:</span>
+                    <span className={`text-lg font-bold ${
+                      stockChangeMode === 'increase' ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {restockingProduct.stockQuantity} 
+                      <span className="mx-2">→</span>
+                      {stockChangeMode === 'increase' 
+                        ? restockingProduct.stockQuantity + restockData.quantityChange
+                        : restockingProduct.stockQuantity - restockData.quantityChange
+                      }
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stockChangeMode === 'increase' ? '+' : '-'}{restockData.quantityChange} units
                   </p>
                 </div>
               )}
-              <Button onClick={handleRestock} className="w-full" disabled={restockData.quantityToAdd <= 0}>
-                <PackagePlus className="h-4 w-4 mr-2" />
-                Update Stock
+
+              <Button 
+                onClick={handleRestock} 
+                className={`w-full ${
+                  stockChangeMode === 'increase' 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+                disabled={restockData.quantityChange <= 0 || 
+                  (stockChangeMode === 'decrease' && restockData.quantityChange > restockingProduct.stockQuantity)}
+              >
+                {stockChangeMode === 'increase' ? (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Increase Stock
+                  </>
+                ) : (
+                  <>
+                    <Minus className="h-4 w-4 mr-2" />
+                    Decrease Stock
+                  </>
+                )}
               </Button>
             </div>
           )}
