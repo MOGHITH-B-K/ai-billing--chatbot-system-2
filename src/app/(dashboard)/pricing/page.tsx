@@ -1,144 +1,103 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
-import { PricingTable } from "@/components/autumn/pricing-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-const productDetails = [
+const plans = [
   {
     id: "free",
+    name: "Free Plan",
     description: "Perfect for small shops getting started with digital billing",
-    items: [
-      {
-        featureId: "monthly_bills",
-        primaryText: "50 bills per month",
-        secondaryText: "Sales + Rental combined"
-      },
-      {
-        featureId: "customer_records",
-        primaryText: "100 customer records",
-        secondaryText: "Store and manage customer data"
-      },
-      {
-        featureId: "product_catalog",
-        primaryText: "50 products",
-        secondaryText: "Manage your product inventory"
-      },
-      {
-        primaryText: "Basic reports",
-        secondaryText: "Essential billing reports"
-      }
+    price: "Free",
+    features: [
+      "50 bills per month",
+      "100 customer records",
+      "50 products",
+      "Basic reports",
+      "Sales & Rental billing",
+      "Customer management",
+      "Product catalog"
     ]
   },
   {
     id: "pro",
+    name: "Pro Plan",
     description: "For growing shops with more transactions and advanced needs",
-    recommendText: "Most Popular",
-    price: {
-      primaryText: "₹999/month",
-      secondaryText: "billed monthly"
-    },
-    items: [
-      {
-        featureId: "monthly_bills",
-        primaryText: "500 bills per month",
-        secondaryText: "10x more billing capacity"
-      },
-      {
-        featureId: "customer_records",
-        primaryText: "1,000 customer records",
-        secondaryText: "10x more customer storage"
-      },
-      {
-        featureId: "product_catalog",
-        primaryText: "500 products",
-        secondaryText: "10x larger product catalog"
-      },
-      {
-        featureId: "customer_behavior_analytics",
-        primaryText: "Customer Behavior Analytics",
-        secondaryText: "Track customer feedback and trends"
-      },
-      {
-        featureId: "advanced_reports",
-        primaryText: "Advanced Reports",
-        secondaryText: "Detailed analytics and insights"
-      },
-      {
-        primaryText: "Priority email support",
-        secondaryText: "Get help faster"
-      }
+    price: "₹999/month",
+    recommended: true,
+    features: [
+      "500 bills per month",
+      "1,000 customer records",
+      "500 products",
+      "Customer Behavior Analytics",
+      "Advanced Reports",
+      "Priority email support",
+      "All Free features"
     ]
   },
   {
     id: "enterprise",
+    name: "Enterprise Plan",
     description: "For large shops with unlimited transactions and premium features",
-    price: {
-      primaryText: "₹2,499/month",
-      secondaryText: "billed monthly"
-    },
-    items: [
-      {
-        primaryText: "Unlimited bills",
-        secondaryText: "No limits on billing"
-      },
-      {
-        primaryText: "Unlimited customers",
-        secondaryText: "No limits on customer records"
-      },
-      {
-        primaryText: "Unlimited products",
-        secondaryText: "No limits on product catalog"
-      },
-      {
-        featureId: "customer_behavior_analytics",
-        primaryText: "Customer Behavior Analytics",
-        secondaryText: "Track customer feedback and trends"
-      },
-      {
-        featureId: "advanced_reports",
-        primaryText: "Advanced Reports",
-        secondaryText: "Detailed analytics and insights"
-      },
-      {
-        featureId: "priority_support",
-        primaryText: "Priority Support",
-        secondaryText: "Get help via phone and email"
-      },
-      {
-        featureId: "api_access",
-        primaryText: "API Access",
-        secondaryText: "Integrate with other systems"
-      }
+    price: "₹2,499/month",
+    features: [
+      "Unlimited bills",
+      "Unlimited customers",
+      "Unlimited products",
+      "Customer Behavior Analytics",
+      "Advanced Reports",
+      "Priority Support",
+      "API Access",
+      "All Pro features"
     ]
   }
 ];
 
 export default function PricingPage() {
-  const { data: session, isPending } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isPending && !session && window.location.search.includes('plan=')) {
-      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-    }
-  }, [session, isPending, router]);
-
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto p-6">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Select the perfect plan for your shop. Upgrade or downgrade anytime.
+          Select the perfect plan for your shop. Contact us to upgrade anytime.
         </p>
       </div>
 
-      <PricingTable productDetails={productDetails} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {plans.map((plan) => (
+          <Card key={plan.id} className={plan.recommended ? "border-primary shadow-lg" : ""}>
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle>{plan.name}</CardTitle>
+                {plan.recommended && (
+                  <Badge variant="default">Most Popular</Badge>
+                )}
+              </div>
+              <CardDescription>{plan.description}</CardDescription>
+              <div className="mt-4">
+                <div className="text-3xl font-bold">{plan.price}</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button className="w-full mt-6" variant={plan.recommended ? "default" : "outline"}>
+                {plan.id === "free" ? "Current Plan" : "Contact Us"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      <Card className="mt-12">
+      <Card>
         <CardHeader>
           <CardTitle>All Plans Include</CardTitle>
         </CardHeader>

@@ -1,6 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { PlanBadge } from "@/components/plan-badge";
 
 export default function DashboardLayout({
   children,
@@ -11,9 +10,8 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <main className="flex-1 w-full">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-4 py-2">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2">
           <SidebarTrigger />
-          <PlanBadge />
         </div>
         <div className="p-6">{children}</div>
       </main>

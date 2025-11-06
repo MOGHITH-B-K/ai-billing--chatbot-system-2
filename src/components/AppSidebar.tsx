@@ -24,7 +24,6 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { db } from "@/lib/database";
-import { PlanBadge } from "@/components/plan-badge";
 import { toast } from "sonner";
 
 import {
@@ -163,10 +162,6 @@ export function AppSidebar() {
             <span>📞 9790548669</span>
             <span>📞 9442378669</span>
           </div>
-        </div>
-        
-        <div className="mt-3 flex justify-center">
-          <PlanBadge />
         </div>
       </SidebarHeader>
       <SidebarContent>

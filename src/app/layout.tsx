@@ -3,7 +3,6 @@ import "./globals.css";
 import VisualEditsMessenger from "../visual-edits/VisualEditsMessenger";
 import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
-import CustomAutumnProvider from "@/lib/autumn-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 
@@ -37,9 +36,7 @@ export default function RootLayout({
             data-debug="true"
             data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
           />
-          <CustomAutumnProvider>
-            {children}
-          </CustomAutumnProvider>
+          {children}
           <Toaster />
           <VisualEditsMessenger />
         </ThemeProvider>
