@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +47,7 @@ interface ShopSettings {
   paymentQrUrl?: string;
 }
 
-export default function SalesBillingPage() {
+function SalesBillingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -914,5 +914,19 @@ Thank you for your business! 🙏`;
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SalesBillingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading...</div>
+        </div>
+      </div>
+    }>
+      <SalesBillingContent />
+    </Suspense>
   );
 }

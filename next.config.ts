@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-const isDev = process.env.NODE_ENV === 'development';
-const LOADER = isDev ? path.resolve(__dirname, 'src/visual-edits/component-tagger-loader.js') : '';
+const LOADER = path.resolve(__dirname, 'src/visual-edits/component-tagger-loader.js');
+
 
 const nextConfig: NextConfig = {
   images: {
@@ -23,16 +23,15 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  ...(isDev && LOADER && {
-    turbopack: {
-      rules: {
-        "*.{jsx,tsx}": {
-          loaders: [LOADER]
-        }
+  output: 'standalone',
+  turbopack: {
+    rules: {
+      "*.{jsx,tsx}": {
+        loaders: [LOADER]
       }
     }
-  })
+  }
 };
 
 export default nextConfig;
-// Orchids restart: 1762422277853
+// Orchids restart: 1762423272021
