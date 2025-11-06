@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ interface RentalBill {
   shopQrUrl?: string;
 }
 
-export default function PreviousRecordsPage() {
+function PreviousRecordsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -934,5 +934,20 @@ export default function PreviousRecordsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function PreviousRecordsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <div className="text-lg font-medium">Loading records...</div>
+        </div>
+      </div>
+    }>
+      <PreviousRecordsContent />
+    </Suspense>
   );
 }
