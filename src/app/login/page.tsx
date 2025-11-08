@@ -86,6 +86,30 @@ function LoginForm() {
         <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-300/20 dark:bg-pink-600/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
+      {/* Floating Bubbles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full animate-float-bubble"
+            style={{
+              left: `${Math.random() * 100}%`,
+              bottom: `-${Math.random() * 20}%`,
+              width: `${20 + Math.random() * 80}px`,
+              height: `${20 + Math.random() * 80}px`,
+              background: `radial-gradient(circle at 30% 30%, 
+                ${['rgba(139, 92, 246, 0.3)', 'rgba(236, 72, 153, 0.3)', 'rgba(99, 102, 241, 0.3)'][i % 3]},
+                ${['rgba(139, 92, 246, 0.1)', 'rgba(236, 72, 153, 0.1)', 'rgba(99, 102, 241, 0.1)'][i % 3]})`,
+              border: `1px solid ${['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)', 'rgba(99, 102, 241, 0.2)'][i % 3]}`,
+              boxShadow: `0 8px 32px 0 ${['rgba(139, 92, 246, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(99, 102, 241, 0.15)'][i % 3]}`,
+              backdropFilter: 'blur(4px)',
+              animationDelay: `${i * 0.5}s`,
+              animationDuration: `${8 + Math.random() * 8}s`,
+            }}
+          />
+        ))}
+      </div>
+
       <div className="w-full max-w-md relative z-10">
         <div className="bg-card/80 backdrop-blur-xl border-2 border-primary/10 rounded-2xl shadow-2xl p-8 space-y-6">
           {/* Header with Logo */}
@@ -174,6 +198,30 @@ function LoginForm() {
           </p>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes float-bubble {
+          0% {
+            transform: translateY(0) translateX(0) scale(0);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.6;
+            transform: scale(1);
+          }
+          90% {
+            opacity: 0.3;
+          }
+          100% {
+            transform: translateY(-120vh) translateX(${Math.random() * 200 - 100}px) scale(0.8);
+            opacity: 0;
+          }
+        }
+
+        .animate-float-bubble {
+          animation: float-bubble linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
