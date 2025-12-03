@@ -2,14 +2,82 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { db } from "@/lib/database";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { BarChart3, TrendingUp, DollarSign, ShoppingCart } from "lucide-react";
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+
+interface SalesBill {
+  id: number;
+  serialNo: number;
+  billDate: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  advanceAmount: number;
+  isPaid: boolean;
+}
+
+interface RentalBill {
+  id: number;
+  serialNo: number;
+  fromDate: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  advanceAmount: number;
+  isPaid: boolean;
+}
 
 export default function OverallSalesPage() {
-  const salesBills = db.getSalesBills();
-  const rentalBills = db.getRentalBills();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [salesBills, setSalesBills] = useState<SalesBill[]>([]);
+  const [rentalBills, setRentalBills] = useState<RentalBill[]>([]);
+
+  // Check authentication
+  useEffect(() => {
+    const token = localStorage.getItem("shop_auth_token");
+    if (!token) {
+      router.push("/login?redirect=/overall-sales");
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [router]);
+
+  // Fetch data
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [salesResponse, rentalResponse] = await Promise.all([
+        fetch('/api/sales-bills?limit=1000'),
+        fetch('/api/rental-bills?limit=1000')
+      ]);
+
+      if (salesResponse.ok && rentalResponse.ok) {
+        const salesData = await salesResponse.json();
+        const rentalData = await rentalResponse.json();
+        setSalesBills(salesData);
+        setRentalBills(rentalData);
+      } else {
+        toast.error('Failed to fetch sales data');
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to fetch sales data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const salesStats = useMemo(() => {
     const total = salesBills.reduce((sum, bill) => sum + (bill.totalAmount + bill.advanceAmount), 0);
@@ -38,7 +106,7 @@ export default function OverallSalesPage() {
 
       const salesTotal = salesBills
         .filter(bill => {
-          const billDate = new Date(bill.date);
+          const billDate = new Date(bill.billDate);
           return billDate >= monthStart && billDate <= monthEnd;
         })
         .reduce((sum, bill) => sum + (bill.totalAmount + bill.advanceAmount), 0);
@@ -80,8 +148,23 @@ export default function OverallSalesPage() {
       .slice(0, 10);
   }, [salesBills, rentalBills]);
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading sales data...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <Toaster />
       <h1 className="text-3xl font-bold">Overall Sales Dashboard</h1>
 
       {/* Combined Stats */}
@@ -232,10 +315,14 @@ export default function OverallSalesPage() {
                   <div className="h-8 bg-muted rounded-lg overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-between px-3 text-white text-xs font-medium"
-                      style={{ width: `${percentage}%` }}
+                      style={{ width: `${Math.max(percentage, 5)}%` }}
                     >
-                      <span>Sales: ₹{month.sales.toFixed(0)}</span>
-                      <span>Rental: ₹{month.rental.toFixed(0)}</span>
+                      {percentage > 20 && (
+                        <>
+                          <span>Sales: ₹{month.sales.toFixed(0)}</span>
+                          <span>Rental: ₹{month.rental.toFixed(0)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
