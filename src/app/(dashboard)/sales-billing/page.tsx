@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Trash2, Save, Printer, Search, Share2, Percent } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Save, Printer, Search, Share2, Percent, Upload, X, Bookmark } from "lucide-react";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface BillItem {
   itemName: string;
@@ -73,6 +74,11 @@ function SalesBillingContent() {
   const [shopSettings, setShopSettings] = useState<ShopSettings>({});
   const [isSaving, setIsSaving] = useState(false);
   const [editingBillId, setEditingBillId] = useState<number | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [showBookingDialog, setShowBookingDialog] = useState(false);
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [isBooking, setIsBooking] = useState(false);
+  const [savedBillId, setSavedBillId] = useState<number | null>(null);
 
   // Memoized calculation functions for better performance
   const calculateSubtotal = useCallback(() => {
@@ -301,6 +307,31 @@ function SalesBillingContent() {
     setShowSearch(false);
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Maximum size is 5MB.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setPhotos((prev) => [...prev, base64String]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    e.target.value = '';
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSave = async () => {
     if (!customerName || !customerPhone) {
       toast.error("Please enter customer name and phone number");
@@ -316,7 +347,7 @@ function SalesBillingContent() {
 
     try {
       // Save customer first
-      await fetch('/api/customers', {
+      const customerResponse = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -325,6 +356,18 @@ function SalesBillingContent() {
           address: customerAddress
         })
       });
+
+      const customerData = await customerResponse.json();
+      const customerId = customerData.id;
+
+      // Upload photos if any
+      if (photos.length > 0 && customerId) {
+        await fetch(`/api/customers/${customerId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photos })
+        });
+      }
 
       const billData = {
         billDate: date.toISOString(),
@@ -355,14 +398,12 @@ function SalesBillingContent() {
 
       let response;
       if (editingBillId) {
-        // Update existing bill
         response = await fetch(`/api/sales-bills?id=${editingBillId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(billData)
         });
       } else {
-        // Create new bill
         response = await fetch('/api/sales-bills', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -376,19 +417,18 @@ function SalesBillingContent() {
       }
 
       const savedBill = await response.json();
+      setSavedBillId(savedBill.id);
       toast.success(`Bill #${savedBill.serialNo} ${editingBillId ? 'updated' : 'saved'} successfully!`);
       
-      // Clear edit state and navigate back
       if (editingBillId) {
         setEditingBillId(null);
-        // Force refresh by adding timestamp to URL
         setTimeout(() => {
           router.push('/previous-records?refresh=' + Date.now());
         }, 500);
         return;
       }
       
-      // Reset form only if creating new bill
+      // Reset form
       await fetchNextSerial();
       setDate(new Date());
       setCustomerName("");
@@ -400,11 +440,56 @@ function SalesBillingContent() {
       setAdvanceAmount(0);
       setIsPaid(false);
       setCustomerFeedback(undefined);
+      setPhotos([]);
+      setSavedBillId(null);
     } catch (error) {
       console.error('Error saving bill:', error);
       toast.error('Failed to save bill. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBookBill = async () => {
+    if (!savedBillId) {
+      toast.error("Please save the bill first before booking");
+      return;
+    }
+
+    setIsBooking(true);
+
+    try {
+      const bookingData = {
+        billType: 'sales',
+        billId: savedBillId,
+        customerName,
+        customerPhone,
+        customerAddress,
+        items,
+        totalAmount: Number(total.toFixed(2)),
+        bookingDate: new Date().toISOString(),
+        notes: bookingNotes,
+        status: 'booked'
+      };
+
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create booking');
+      }
+
+      toast.success("Bill booked successfully!");
+      setShowBookingDialog(false);
+      setBookingNotes("");
+    } catch (error) {
+      console.error('Error booking bill:', error);
+      toast.error('Failed to book bill. Please try again.');
+    } finally {
+      setIsBooking(false);
     }
   };
 
@@ -681,6 +766,54 @@ Thank you for your business! 🙏`;
             </div>
           </div>
 
+          {/* Photo Upload Section */}
+          <div className="space-y-3">
+            <Label>Customer Photos (Optional)</Label>
+            <div className="flex gap-2 items-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('photo-upload')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Photos
+              </Button>
+              <Input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <span className="text-sm text-muted-foreground">
+                {photos.length} photo(s) uploaded (Max 5MB each)
+              </span>
+            </div>
+            
+            {photos.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={photo}
+                      alt={`Photo ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-md border"
+                    />
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removePhoto(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Items */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -902,6 +1035,16 @@ Thank you for your business! 🙏`;
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? 'Saving...' : editingBillId ? 'Update Bill' : 'Save Bill'}
             </Button>
+            {savedBillId && !editingBillId && (
+              <Button 
+                onClick={() => setShowBookingDialog(true)} 
+                size="lg" 
+                variant="secondary"
+              >
+                <Bookmark className="h-4 w-4 mr-2" />
+                Book Bill
+              </Button>
+            )}
             <Button onClick={handlePrint} variant="outline" size="lg">
               <Printer className="h-4 w-4 mr-2" />
               Print Bill
@@ -913,6 +1056,40 @@ Thank you for your business! 🙏`;
           </div>
         </CardContent>
       </Card>
+
+      {/* Booking Dialog */}
+      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book This Bill</DialogTitle>
+            <DialogDescription>
+              Save this bill as a booking for future reference.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Booking Notes (Optional)</Label>
+              <Input
+                placeholder="Add any notes for this booking..."
+                value={bookingNotes}
+                onChange={(e) => setBookingNotes(e.target.value)}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p><strong>Customer:</strong> {customerName}</p>
+              <p><strong>Total Amount:</strong> ₹{total.toFixed(2)}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBookingDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBookBill} disabled={isBooking}>
+              {isBooking ? 'Booking...' : 'Confirm Booking'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -90,6 +90,7 @@ export const customers = sqliteTable('customers', {
   name: text('name').notNull(),
   phone: text('phone').notNull().unique(),
   address: text('address'),
+  photoUrls: text('photo_urls', { mode: 'json' }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -159,6 +160,22 @@ export const rentalBills = sqliteTable('rental_bills', {
   shopPhone2: text('shop_phone_2'),
   shopLogoUrl: text('shop_logo_url'),
   shopQrUrl: text('shop_qr_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const bookings = sqliteTable('bookings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  billType: text('bill_type').notNull(),
+  billId: integer('bill_id').notNull(),
+  customerName: text('customer_name').notNull(),
+  customerPhone: text('customer_phone').notNull(),
+  customerAddress: text('customer_address'),
+  items: text('items', { mode: 'json' }).notNull(),
+  totalAmount: real('total_amount').notNull(),
+  bookingDate: text('booking_date').notNull(),
+  notes: text('notes'),
+  status: text('status').notNull().default('booked'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

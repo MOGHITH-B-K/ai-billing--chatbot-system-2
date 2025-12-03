@@ -20,6 +20,7 @@ import {
   LogOut,
   Settings,
   FileOutput,
+  Bookmark,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -42,6 +43,7 @@ import {
 const menuItems = [
   { title: "Sales Billing", url: "/sales-billing", icon: ShoppingCart },
   { title: "Rental Billing", url: "/rental-billing", icon: Clock },
+  { title: "Bookings", url: "/bookings", icon: Bookmark },
   { title: "Previous Records", url: "/previous-records", icon: History },
   { title: "Downloads", url: "/downloads", icon: Download },
   { title: "Calendar", url: "/calendar", icon: Calendar },
