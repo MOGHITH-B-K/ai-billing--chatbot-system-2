@@ -258,7 +258,19 @@ export async function DELETE(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
+    const bulkDelete = searchParams.get('bulkDelete');
 
+    // Bulk delete all products
+    if (bulkDelete === 'true') {
+      const deletedProducts = await db.delete(products).returning();
+      
+      return NextResponse.json({
+        message: `Successfully deleted ${deletedProducts.length} product(s)`,
+        count: deletedProducts.length
+      });
+    }
+
+    // Single product delete
     // Validate ID
     if (!id || isNaN(parseInt(id))) {
       return NextResponse.json({ 

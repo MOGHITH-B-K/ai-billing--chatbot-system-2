@@ -1,47 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory storage for settings (you can replace this with database storage)
-let shopSettings = {
-  shopName: "SREE SAI DURGA",
-  shopAddress: "MAIN ROAD, THIRUVENNAI NALLUR Kt, VILLUPURAM Dt, PINCODE : 607203",
-  phoneNumber1: "9790548669",
-  phoneNumber2: "9442378669",
-  logoUrl: null as string | null,
-  paymentQrUrl: null as string | null,
-};
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json(shopSettings);
+    // Get settings from localStorage simulation (in real app, use database)
+    // For now, return default settings that can be overridden by client
+    const defaultSettings = {
+      shopName: 'SREE SAI DURGA',
+      shopAddress: 'MAIN ROAD, THIRUVENNAI NALLUR Kt, VILLUPURAM Dt, PINCODE : 607203',
+      phoneNumber1: '9790548669',
+      phoneNumber2: '9442378669',
+      logoUrl: '',
+      paymentQrUrl: ''
+    };
+
+    return NextResponse.json(defaultSettings);
   } catch (error) {
-    console.error("Error fetching settings:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch settings" },
-      { status: 500 }
-    );
+    console.error('GET settings error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error: ' + (error as Error).message 
+    }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Update settings
-    shopSettings = {
-      shopName: body.shopName || shopSettings.shopName,
-      shopAddress: body.shopAddress || shopSettings.shopAddress,
-      phoneNumber1: body.phoneNumber1 || shopSettings.phoneNumber1,
-      phoneNumber2: body.phoneNumber2 || shopSettings.phoneNumber2,
-      logoUrl: body.logoUrl !== undefined ? body.logoUrl : shopSettings.logoUrl,
-      paymentQrUrl: body.paymentQrUrl !== undefined ? body.paymentQrUrl : shopSettings.paymentQrUrl,
-    };
-
-    return NextResponse.json(shopSettings);
+    // In a real app, save to database
+    // For now, just return the settings back
+    return NextResponse.json(body);
   } catch (error) {
-    console.error("Error updating settings:", error);
-    return NextResponse.json(
-      { error: "Failed to update settings" },
-      { status: 500 }
-    );
+    console.error('POST settings error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error: ' + (error as Error).message 
+    }, { status: 500 });
   }
 }

@@ -419,6 +419,37 @@ export default function ProductDetailsPage() {
     }
   }, [loadData]);
 
+  const handleDeleteAll = useCallback(async () => {
+    if (!confirm(`⚠️ WARNING: This will permanently delete ALL ${products.length} products from the database!\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`)) {
+      return;
+    }
+
+    // Second confirmation
+    if (!confirm("This is your final warning. Type YES in your mind and click OK to proceed with deleting ALL products.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/products?bulkDelete=true', {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(result.message);
+        
+        // Invalidate caches and reload
+        dataCache.clear('products');
+        await loadData();
+      } else {
+        throw new Error('Failed to delete all products');
+      }
+    } catch (error) {
+      console.error('Error deleting all products:', error);
+      toast.error('Failed to delete all products');
+    }
+  }, [products.length, loadData]);
+
   const openEdit = (product: Product) => {
     setEditingProduct(product);
     setFormData({
@@ -735,6 +766,14 @@ export default function ProductDetailsPage() {
               <Button variant="outline" onClick={exportProducts}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteAll}
+                disabled={products.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All ({products.length})
               </Button>
               <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
                 <DialogTrigger asChild>
